@@ -2,29 +2,51 @@
 import bcrypt from 'bcrypt';
 import { users, User } from '../models/user.model';
 // services/auth.service.ts
-import prisma from '../lib/prisma';
-
+//import prisma from '../lib/prisma';
+import { db } from "../lib/db";
 export async function register(email: string, password: string) {
-    const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) throw new Error('User already exists');
+    // Check if user already exists
+    const [existingRows] = await db.query('SELECT * FROM user WHERE email = ?', [email]);
 
-    const hashed = await bcrypt.hash(password, 10);
-    const newUser = await prisma.user.create({
-        data: {
-            email,
-            password: hashed
-        }
-    });
+    if ((existingRows as any[]).length > 0) {
+        throw new Error('User already exists');
+    }
 
-    return newUser;
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Insert new user
+    const [result] = await db.query('INSERT INTO user (email, password) VALUES (?, ?)', [email, hashedPassword]);
+
+    return {
+        id: (result as any).insertId,
+        email,
+    };
 }
 
+
+
 export async function login(email: string, password: string) {
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) throw new Error('User not found');
+    // Get the user by email
+    const [rows] = await db.query('SELECT * FROM user WHERE email = ?', [email]);
+    const users = rows as any[];
 
+    if (users.length === 0) {
+        throw new Error('User not found');
+    }
+
+    const user = users[0];
+
+    // Compare the password
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) throw new Error('Incorrect password');
+    if (!isMatch) {
+        throw new Error('Incorrect password');
+    }
 
-    return user;
+    // Return user data (you might want to exclude password)
+    return {
+        id: user.id,
+        email: user.email,
+        // optionally return a JWT token or session data here
+    };
 }
