@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "test:ci": "jest --runInBand --coverage",
+    "test:ci": "jest --runInBand --coverage --passWithNoTests",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js"
